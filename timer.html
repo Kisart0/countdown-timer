@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Таймер обратного отсчета</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(-45deg, #1a1a1a, #2c3e50, #2c3e50, #1a1a1a);
+            background-size: 400% 400%;
+            animation: gradient 15s ease infinite;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        @keyframes gradient {
+            0% {
+                background-position: 0% 50%;
+            }
+            50% {
+                background-position: 100% 50%;
+            }
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+        
+        .container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            position: relative;
+            z-index: 2;
+        }
+        
+        .timer {
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 40px 60px;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5),
+                        0 0 0 1px rgba(255, 255, 255, 0.1);
+            text-align: center;
+            transform: translateY(0);
+            transition: transform 0.3s ease;
+        }
+
+        .timer:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.6),
+                        0 0 0 1px rgba(255, 255, 255, 0.2);
+        }
+        
+        .timer h1 {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 2.5em;
+            margin: 0 0 20px 0;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        #countdown {
+            font-size: 5em;
+            color: #ffffff;
+            margin: 20px 0;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.3),
+                         0 0 20px rgba(255, 255, 255, 0.2),
+                         0 0 30px rgba(255, 255, 255, 0.1),
+                         2px 2px 4px rgba(0, 0, 0, 0.5);
+            font-family: 'Courier New', monospace;
+            letter-spacing: 5px;
+        }
+
+        .content-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .random-content {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            padding: 15px;
+            border-radius: 15px;
+            max-width: 300px;
+            pointer-events: auto;
+            animation: fadeIn 0.5s ease-out;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+        }
+
+        .random-content img {
+            max-width: 200px;
+            height: auto;
+            border-radius: 10px;
+            display: block;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .random-content p {
+            margin: 0;
+            color: white;
+            font-size: 16px;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9) translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        @keyframes pulse {
+            0% {
+                text-shadow: 0 0 10px rgba(255, 255, 255, 0.3),
+                            0 0 20px rgba(255, 255, 255, 0.2),
+                            0 0 30px rgba(255, 255, 255, 0.1),
+                            2px 2px 4px rgba(0, 0, 0, 0.5);
+            }
+            50% {
+                text-shadow: 0 0 20px rgba(255, 0, 0, 0.5),
+                            0 0 30px rgba(255, 0, 0, 0.3),
+                            0 0 40px rgba(255, 0, 0, 0.2),
+                            2px 2px 4px rgba(0, 0, 0, 0.5);
+            }
+            100% {
+                text-shadow: 0 0 10px rgba(255, 255, 255, 0.3),
+                            0 0 20px rgba(255, 255, 255, 0.2),
+                            0 0 30px rgba(255, 255, 255, 0.1),
+                            2px 2px 4px rgba(0, 0, 0, 0.5);
+            }
+        }
+
+        .time-ending #countdown {
+            color: #ff4757;
+            animation: pulse 1s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="timer">
+            <h1>Обратный отсчет</h1>
+            <div id="countdown">24:00:00</div>
+        </div>
+    </div>
+    <div class="content-container" id="contentContainer"></div>
+
+    <script>
+        // Проверка доступности localStorage
+        function isLocalStorageAvailable() {
+            try {
+                localStorage.setItem('test', 'test');
+                localStorage.removeItem('test');
+                return true;
+            } catch(e) {
+                return false;
+            }
+        }
+
+        // Открываем вторую страницу при загрузке
+        window.onload = function() {
+            if (!isLocalStorageAvailable()) {
+                alert('Для работы приложения необходим доступ к localStorage. Пожалуйста, разрешите использование cookies и localStorage в настройках браузера.');
+                return;
+            }
+            window.open('editor.html', '_blank');
+        }
+
+        // Функция для получения сохраненного времени
+        function getStoredTime() {
+            const storedEndTime = localStorage.getItem('endTime');
+            if (storedEndTime) {
+                return parseInt(storedEndTime);
+            }
+            const endTime = Date.now() + (24 * 60 * 60 * 1000);
+            localStorage.setItem('endTime', endTime.toString());
+            return endTime;
+        }
+
+        // Обновление таймера
+        function updateTimer() {
+            const endTime = getStoredTime();
+            const now = Date.now();
+            const timeLeft = endTime - now;
+
+            if (timeLeft <= 0) {
+                document.getElementById('countdown').innerHTML = "Время истекло!";
+                document.querySelector('.timer').classList.add('time-ending');
+                return;
+            }
+
+            const hours = Math.floor(timeLeft / (1000 * 60 * 60));
+            const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+
+            document.getElementById('countdown').innerHTML = 
+                `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+            // Добавляем класс для анимации, когда осталось мало времени
+            if (timeLeft < 3600000) { // меньше часа
+                document.querySelector('.timer').classList.add('time-ending');
+            } else {
+                document.querySelector('.timer').classList.remove('time-ending');
+            }
+        }
+
+        // Обновляем таймер каждую секунду
+        setInterval(updateTimer, 1000);
+        updateTimer();
+
+        // Функция для получения случайной позиции
+        function getRandomPosition(element) {
+            const timerRect = document.querySelector('.timer').getBoundingClientRect();
+            const timerBuffer = 50;
+
+            const maxX = window.innerWidth - element.offsetWidth;
+            const maxY = window.innerHeight - element.offsetHeight;
+            
+            let x, y;
+            do {
+                x = Math.random() * maxX;
+                y = Math.random() * maxY;
+            } while (
+                x < timerRect.right + timerBuffer && 
+                x + element.offsetWidth > timerRect.left - timerBuffer &&
+                y < timerRect.bottom + timerBuffer && 
+                y + element.offsetHeight > timerRect.top - timerBuffer
+            );
+
+            return { x, y };
+        }
+
+        // Функция для добавления контента
+        window.addEventListener('storage', function(e) {
+            if (e.key === 'newContent') {
+                try {
+                    const newItem = JSON.parse(localStorage.getItem('newContent'));
+                    const contentDiv = document.createElement('div');
+                    contentDiv.className = 'random-content';
+                    contentDiv.id = `content-${newItem.id}`;
+                    
+                    if (newItem.type === 'text') {
+                        contentDiv.innerHTML = `<p>${newItem.content}</p>`;
+                    } else {
+                        contentDiv.innerHTML = `<img src="${newItem.content}" alt="Загруженное изображение">`;
+                    }
+
+                    document.getElementById('contentContainer').appendChild(contentDiv);
+
+                    setTimeout(() => {
+                        const pos = getRandomPosition(contentDiv);
+                        contentDiv.style.left = pos.x + 'px';
+                        contentDiv.style.top = pos.y + 'px';
+                    }, 10);
+
+                    localStorage.removeItem('newContent');
+                } catch (error) {
+                    console.error('Ошибка при добавлении контента:', error);
+                }
+            } else if (e.key === 'deleteContent') {
+                const idToDelete = localStorage.getItem('deleteContent');
+                const elementToDelete = document.getElementById(`content-${idToDelete}`);
+                if (elementToDelete) {
+                    elementToDelete.remove();
+                }
+                localStorage.removeItem('deleteContent');
+            } else if (e.key === 'clearContent') {
+                document.getElementById('contentContainer').innerHTML = '';
+                localStorage.removeItem('clearContent');
+            }
+        });
+    </script>
+</body>
+</html>
+
+<!-- Создаем второй файл editor.html -->
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Редактор контента</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            padding: 20px;
+            background: #f0f2f5;
+        }
+        
+        .editor-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        
+        textarea {
+            width: 100%;
+            height: 150px;
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        
+        button {
+            background: #2980b9;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        button:hover {
+            background: #3498db;
+        }
+        
+        input[type="file"] {
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="editor-container">
+        <h2>Добавить контент</h2>
+        <textarea id="textContent" placeholder="Введите текст..."></textarea>
+        <input type="file" id="imageInput" accept="image/*">
+        <button onclick="addContent()">Добавить контент</button>
+    </div>
+
+    <script>
+        function addContent() {
+            const text = document.getElementById('textContent').value;
+            const imageInput = document.getElementById('imageInput');
+            let content = text ? `<p>${text}</p>` : '';
+
+            if (imageInput.files && imageInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    content += `<img src="${e.target.result}" alt="Загруженное изображение">`;
+                    localStorage.setItem('userContent', content);
+                }
+                reader.readAsDataURL(imageInput.files[0]);
+            } else {
+                localStorage.setItem('userContent', content);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Редактор контента</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            padding: 20px;
+            background: #f0f2f5;
+        }
+        
+        .editor-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        
+        textarea {
+            width: 100%;
+            height: 150px;
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        
+        button {
+            background: #2980b9;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        button:hover {
+            background: #3498db;
+        }
+        
+        input[type="file"] {
+            margin: 10px 0;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+
+        .reset-button {
+            background: #e74c3c;
+        }
+
+        .reset-button:hover {
+            background: #c0392b;
+        }
+
+        .clear-button {
+            background: #95a5a6;
+        }
+
+        .clear-button:hover {
+            background: #7f8c8d;
+        }
+
+        .content-preview {
+            margin-top: 20px;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+
+        .content-item {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+
+        .content-item img {
+            max-width: 100px;
+            height: auto;
+            border-radius: 5px;
+            margin-right: 10px;
+        }
+
+        .content-item p {
+            margin: 0;
+            flex-grow: 1;
+        }
+
+        .delete-button {
+            background: #e74c3c;
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+
+        .delete-button:hover {
+            background: #c0392b;
+        }
+    </style>
+</head>
+<body>
+    <div class="editor-container">
+        <h2>Добавить контент</h2>
+        <textarea id="textContent" placeholder="Введите текст..."></textarea>
+        <input type="file" id="imageInput" accept="image/*">
+        <div class="button-group">
+            <button onclick="addContent()">Добавить контент</button>
+            <button onclick="resetTimer()" class="reset-button">Перезапустить таймер</button>
+            <button onclick="clearAllContent()" class="clear-button">Очистить всё</button>
+        </div>
+        <div id="contentPreview" class="content-preview">
+            <h3>Добавленный контент:</h3>
+        </div>
+    </div>
+
+    <script>
+        // Массив для хранения всего контента
+        let contentItems = [];
+
+        function addContent() {
+            const text = document.getElementById('textContent').value;
+            const imageInput = document.getElementById('imageInput');
+
+            if (!text && (!imageInput.files || !imageInput.files[0])) {
+                alert('Добавьте текст или выберите изображение');
+                return;
+            }
+
+            if (imageInput.files && imageInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const newItem = {
+                        id: Date.now(),
+                        type: 'image',
+                        content: e.target.result
+                    };
+                    if (text) {
+                        const textItem = {
+                            id: Date.now() - 1,
+                            type: 'text',
+                            content: text
+                        };
+                        contentItems.push(textItem);
+                        // Отправляем текст на основную страницу
+                        localStorage.setItem('newContent', JSON.stringify(textItem));
+                    }
+                    contentItems.push(newItem);
+                    // Отправляем изображение на основную страницу
+                    localStorage.setItem('newContent', JSON.stringify(newItem));
+                    updateDisplay();
+                    clearInputs();
+                }
+                reader.readAsDataURL(imageInput.files[0]);
+            } else if (text) {
+                const newItem = {
+                    id: Date.now(),
+                    type: 'text',
+                    content: text
+                };
+                contentItems.push(newItem);
+                // Отправляем текст на основную страницу
+                localStorage.setItem('newContent', JSON.stringify(newItem));
+                updateDisplay();
+                clearInputs();
+            }
+        }
+
+        function updateDisplay() {
+            // Обновляем превью
+            const preview = document.getElementById('contentPreview');
+            preview.innerHTML = '<h3>Добавленный контент:</h3>';
+            
+            contentItems.forEach(item => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'content-item';
+                
+                if (item.type === 'image') {
+                    const img = document.createElement('img');
+                    img.src = item.content;
+                    img.alt = 'Загруженное изображение';
+                    itemDiv.appendChild(img);
+                } else {
+                    const p = document.createElement('p');
+                    p.textContent = item.content;
+                    itemDiv.appendChild(p);
+                }
+
+                const deleteButton = document.createElement('button');
+                deleteButton.className = 'delete-button';
+                deleteButton.textContent = 'Удалить';
+                deleteButton.onclick = () => deleteItem(item.id);
+                itemDiv.appendChild(deleteButton);
+
+                preview.appendChild(itemDiv);
+            });
+        }
+
+        function deleteItem(id) {
+            contentItems = contentItems.filter(item => item.id !== id);
+            // Отправляем сигнал удаления на основную страницу
+            localStorage.setItem('deleteContent', id.toString());
+            updateDisplay();
+        }
+
+        function clearInputs() {
+            document.getElementById('textContent').value = '';
+            document.getElementById('imageInput').value = '';
+        }
+
+        function resetTimer() {
+            const newEndTime = Date.now() + (24 * 60 * 60 * 1000);
+            localStorage.setItem('endTime', newEndTime.toString());
+        }
+
+        function clearAllContent() {
+            contentItems = [];
+            updateDisplay();
+            // Отправляем сигнал очистки на основную страницу
+            localStorage.setItem('clearContent', 'true');
+            clearInputs();
+        }
+
+        // Проверка доступности localStorage
+        function isLocalStorageAvailable() {
+            try {
+                localStorage.setItem('test', 'test');
+                localStorage.removeItem('test');
+                return true;
+            } catch(e) {
+                return false;
+            }
+        }
+
+        // Проверяем доступность localStorage при загрузке
+        window.onload = function() {
+            if (!isLocalStorageAvailable()) {
+                alert('Для работы приложения необходим доступ к localStorage. Пожалуйста, разрешите использование cookies и localStorage в настройках браузера.');
+                return;
+            }
+            updateDisplay();
+        }
+    </script>
+</body>
+</html> 
